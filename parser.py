@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import xml.etree.ElementTree as ET
 import csv
+import argparse as arp
 
 namespaces = {'PT': 'http://www.ptsecurity.ru/reports'}
 protocols = {'6': 'TCP', '17': 'UDP'}
@@ -58,7 +59,21 @@ def vuln_finder(appended_info, root, soft):
 
 
 if __name__ == '__main__':
-    res = mp_parse('test.xml')
-    with open('test.csv', 'w', newline='') as file:
+    parser = arp.ArgumentParser(prog='MaxPatrolToCsv')
+    parser.add_argument('-i', '--input', help='Path to xml file')
+    parser.add_argument('-o', '--output', help='Path to output file')
+
+    args = parser.parse_args()
+    if args.input is None:
+        parser.print_help()
+        print("[-] -i target parameter required")
+        exit(7)
+    input_path = args.input
+    if args.output is None:
+        output_path = './output.csv'
+    else:
+        output_path = args.output
+    res = mp_parse(input_path)
+    with open(output_path, 'w', newline='') as file:
         wr = csv.writer(file, quoting=csv.QUOTE_ALL)
         wr.writerows(res)
