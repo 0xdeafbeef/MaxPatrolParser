@@ -62,7 +62,7 @@ if __name__ == '__main__':
     parser = arp.ArgumentParser(prog='MaxPatrolToCsv')
     parser.add_argument('-i', '--input', help='Path to xml file')
     parser.add_argument('-o', '--output', help='Path to output file')
-
+    parser.add_argument('-i', '--ignored-values', help='Ignored values list')
     args = parser.parse_args()
     if args.input is None:
         parser.print_help()
@@ -75,5 +75,5 @@ if __name__ == '__main__':
         output_path = args.output
     res = mp_parse(input_path)
     with open(output_path, 'w', newline='') as file:
-        wr = csv.writer(file, quoting=csv.QUOTE_ALL)
+        wr = csv.writer(file, quoting=csv.QUOTE_ALL, dialect='excel')
         wr.writerows(res)
