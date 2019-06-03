@@ -64,11 +64,11 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output', help='Path to output file')
     parser.add_argument('-i', '--ignored-values', help='Ignored values list')
     args = parser.parse_args()
-    if args.input is None:
+    if args.input_path is None:
         parser.print_help()
-        print("[-] -i target parameter required")
-        exit(7)
-    input_path = args.input
+        print("[-] -p target parameter required")
+        exit(1)
+    input_path = args.input_path
     if args.output is None:
         output_path = './output.csv'
     else:
