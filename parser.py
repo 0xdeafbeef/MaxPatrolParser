@@ -35,12 +35,12 @@ def mp_parse(filename):
             except:
                 appended_info.append(None)
             # finds cve and cvss if exists, else sets None
-            vuln_finder(appended_info, root, soft)
-            host_info.append(appended_info)
+            vuln_finder(appended_info, root, soft, host_info)
     return host_info
 
 
-def vuln_finder(appended_info, root, soft):
+def vuln_finder(appended_info, root, soft, host_info):
+    appended_info_copy = appended_info.copy()
     for vulnerabilty in soft.findall('PT:vulners/PT:vulner', namespaces):
         for vuln in root.findall('./PT:vulners/PT:vulner', namespaces):
             if vuln.attrib['id'] == vulnerabilty.attrib['id']:
@@ -56,6 +56,9 @@ def vuln_finder(appended_info, root, soft):
                     appended_info.append(vuln.find('PT:description', namespaces).text)
                 except:
                     appended_info.append(None)
+                host_info.append(appended_info)
+                appended_info = appended_info_copy.copy()
+                break
 
 
 if __name__ == '__main__':
