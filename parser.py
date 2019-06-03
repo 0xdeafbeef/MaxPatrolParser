@@ -60,7 +60,7 @@ def vuln_finder(appended_info, root, soft):
 
 if __name__ == '__main__':
     parser = arp.ArgumentParser(prog='MaxPatrolToCsv')
-    parser.add_argument('-i', '--input', help='Path to xml file')
+    parser.add_argument('-p', '--input-path', help='Path to xml file')
     parser.add_argument('-o', '--output', help='Path to output file')
     parser.add_argument('-i', '--ignored-values', help='Ignored values list')
     args = parser.parse_args()
