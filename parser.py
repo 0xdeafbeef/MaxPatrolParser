@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import xml.etree.ElementTree as ET
 import csv
 import argparse as arp
@@ -14,7 +15,8 @@ def mp_parse(filename):
     tree = ET.parse(filename)
     root = tree.getroot()
     host_info = []
-    appended_info = ['ip', 'fqdn', 'os', 'soft_name', 'port', 'protocol', 'port status', 'Vuln id', 'CVSS', 'CVE',
+    appended_info = ['ip', 'fqdn', 'os', 'soft_name', 'soft version', 'soft path', 'port', 'protocol', 'port status',
+                     'Vuln id', 'CVSS', 'CVE',
                      'description', 'start time', 'stop_time']
     host_info.append(appended_info)
     vuln_table_creator(root)
@@ -30,12 +32,14 @@ def mp_parse(filename):
             appended_info.append(fqdn)
             appended_info.append(os)
             appended_info.append(soft.find('PT:name', namespaces).text)
-            # finds soft name
-            # todo check this
-            # try:
-            #     appended_info.append(soft.find('PT:banner/PT:table/PT:body/PT:row/PT:field', namespaces).text)
-            # except:
-            #     appended_info.append(None)
+            try:
+                appended_info.append(soft.find('PT:version', namespaces).text)
+            except:
+                appended_info.append(None)
+            try:
+                appended_info.append(soft.find('PT:path', namespaces).text)
+            except:
+                appended_info.append(None)
             try:
                 appended_info.append(soft.attrib['port'])
             except:
@@ -58,6 +62,7 @@ def get_os_info(host):
     for prod_type in host.findall('PT:scan_objects/PT:soft', namespaces):
         if prod_type.attrib['type'] == '2':
             os = prod_type.find('PT:name', namespaces).text
+            os = os + ' ' + prod_type.find('PT:version', namespaces).text
             break
     try:
         os
@@ -67,7 +72,6 @@ def get_os_info(host):
 
 
 def vuln_finder(appended_info, soft, host_info, start_time, stop_time):
-    # appended_info_copy = appended_info.copy()
     for vulnerabilty in soft.findall('PT:vulners/PT:vulner', namespaces):
         host_info.append(
             appended_info + [vulnerabilty.attrib['id']] + vulners_fast_table[vulnerabilty.attrib['id']] +
@@ -82,6 +86,10 @@ def vuln_table_creator(root):
     for vuln in root.findall('./PT:vulners/PT:vulner', namespaces):
         vuln_info = list()
         try:
+            vuln_info.append(vuln.find('PT:title', namespaces).text)
+        except:
+            vuln_info.append(None)
+        try:
             vuln_info.append(vuln.find('PT:cvss', namespaces).attrib['base_score'])
         except:
             vuln_info.append(None)
@@ -91,6 +99,10 @@ def vuln_table_creator(root):
             vuln_info.append(None)
         try:
             vuln_info.append(vuln.find('PT:description', namespaces).text)
+        except:
+            vuln_info.append(None)
+        try:
+            vuln_info.append(vuln.find('PT:how_to_fix', namespaces).text)
         except:
             vuln_info.append(None)
         vulners_fast_table.update({vuln.attrib['id']: vuln_info})
@@ -113,6 +125,10 @@ if __name__ == '__main__':
         output_path = args.output
     res = mp_parse(input_path)
     print(sys.getsizeof(vulners_fast_table))
+    try:
+        os.remove(output_path)
+    except:
+        pass
     with open(output_path, 'a+', newline='') as file:
         file.write('sep=,\r\n')
         wr = csv.writer(file, quoting=csv.QUOTE_ALL, dialect='excel')
