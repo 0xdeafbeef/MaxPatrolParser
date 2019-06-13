@@ -3,23 +3,49 @@ import os
 import xml.etree.ElementTree as ET
 import csv
 import argparse as arp
-import gc
 import sys
+import objgraph
 
 namespaces = {'PT': 'http://www.ptsecurity.ru/reports'}
 protocols = {'6': 'TCP', '17': 'UDP'}
 port_status = {'0': 'open', '1': 'locked', '2': 'unavailable'}
 
 
-def mp_parse(filename):
+def risk_level(cvss, reliability):
+    cvss = float(cvss)
+    if int(reliability) == 0:
+        if cvss >= 9:
+            return 'Critical'
+        elif cvss >= 7 and cvss < 9:
+            return 'High'
+        elif cvss > 4 and cvss < 7:
+            return 'Medium'
+        else:
+            return 'Low'
+    elif int(reliability) == 1:
+        if cvss >= 9:
+            return 'Critical (Suspicious)'
+        elif cvss >= 7 and cvss < 9:
+            return 'High (Suspicious)'
+        elif cvss > 4 and cvss < 7:
+            return 'Medium (Suspicious)'
+        else:
+            return 'Low (Suspicious)'
+
+
+def mp_parse(filename, output_file, flags):
+    level = flags.level
+    cve_is_needed = flags.cve
     tree = ET.parse(filename)
     root = tree.getroot()
     host_info = []
-    appended_info = ['ip', 'fqdn', 'os', 'soft_name', 'soft version', 'soft path', 'port', 'protocol', 'port status',
-                     'Vuln id', 'CVSS', 'CVE',
-                     'description', 'start time', 'stop_time']
+    appended_info = ['ip', 'fqdn', 'os', 'soft name', 'soft version', 'soft path', 'port', 'protocol', 'port status',
+                     'Patrol vulner id', 'Vulner name', 'CVSS', 'CVE',
+                     'description', 'how to fix', 'links', 'start time', 'stop_time']
     host_info.append(appended_info)
     vuln_table_creator(root)
+    objgraph.show_most_common_types()
+    cwr = csv.writer(output_file, quoting=csv.QUOTE_ALL, dialect='excel')
     for host in root.findall('./PT:data/PT:host', namespaces):
         ip = host.attrib['ip']
         fqdn = host.attrib['fqdn']
@@ -52,37 +78,53 @@ def mp_parse(filename):
                 appended_info.append(port_status[soft.attrib['port_status']])
             except:
                 appended_info.append(None)
-
             # finds cve and cvss if exists, else sets None
-            vuln_finder(appended_info, soft, host_info, start_time, stop_time)
-    return host_info
+            if vuln_finder(appended_info, soft, host_info, start_time, stop_time,
+                           level, cve_is_needed) == 0 and level == 0:
+                appended_info += ([None] * 7 + [start_time, stop_time])
+                host_info.append(appended_info)
+        cwr.writerows(host_info)
+        host_info = []
 
 
 def get_os_info(host):
     for prod_type in host.findall('PT:scan_objects/PT:soft', namespaces):
         if prod_type.attrib['type'] == '2':
-            os = prod_type.find('PT:name', namespaces).text
-            os = os + ' ' + prod_type.find('PT:version', namespaces).text
+            os_name = prod_type.find('PT:name', namespaces).text
+            os_name = os_name + ' ' + prod_type.find('PT:version', namespaces).text
             break
     try:
-        os
+        os_name
     except NameError:
-        os = None
-    return os
+        os_name = None
+    return os_name
 
 
-def vuln_finder(appended_info, soft, host_info, start_time, stop_time):
+def vuln_finder(appended_info: list, soft: ET.Element, host_info, start_time: str, stop_time: str, level: int,
+                cve: bool):
+    counter = 0
     for vulnerabilty in soft.findall('PT:vulners/PT:vulner', namespaces):
+        if int(vulnerabilty.attrib['level']) < int(level):
+            continue
+        counter += 1
+        vulners_part = vulners_fast_table[vulnerabilty.attrib['id']]
+        if cve and vulners_part[2] is None:
+            continue
+        try:
+            risk = risk_level(vulners_part[1], vulnerabilty.attrib['status'])
+        except:
+            risk = 'Info'
+        vulners_part.insert(3, risk)
         host_info.append(
-            appended_info + [vulnerabilty.attrib['id']] + vulners_fast_table[vulnerabilty.attrib['id']] +
+            appended_info + [vulnerabilty.attrib['id']] + vulners_part +
             [start_time, stop_time])
-        break
+    return counter
 
 
 vulners_fast_table = dict()
 
 
-def vuln_table_creator(root):
+def vuln_table_creator(root: ET,):
     for vuln in root.findall('./PT:vulners/PT:vulner', namespaces):
         vuln_info = list()
         try:
@@ -105,6 +147,10 @@ def vuln_table_creator(root):
             vuln_info.append(vuln.find('PT:how_to_fix', namespaces).text)
         except:
             vuln_info.append(None)
+        try:
+            vuln_info.append(vuln.find('PT:links', namespaces).text)
+        except:
+            vuln_info.append(None)
         vulners_fast_table.update({vuln.attrib['id']: vuln_info})
 
 
@@ -112,24 +158,30 @@ if __name__ == '__main__':
     parser = arp.ArgumentParser(prog='MaxPatrolToCsv')
     parser.add_argument('-p', '--input-path', help='Path to xml file')
     parser.add_argument('-o', '--output', help='Path to output file')
-    parser.add_argument('-i', '--ignored-values', help='Ignored values list')
+    parser.add_argument('-l', '--level', nargs='?', const=0,
+                        help='Level of vulnerability. 0 - info\n'
+                             ' 1 - low\n'
+                             ' 2 - medium (suspicious)\n'
+                             ' 3 - medium\n'
+                             ' 4 - high (suspicious)\n'
+                             ' 5 - high\n')
+    parser.add_argument('--cve', action='store_true')
     args = parser.parse_args()
     if args.input_path is None:
         parser.print_help()
         print("[-] -p target parameter required")
         exit(1)
+    if args.level is None:
+        args.level = 0
     input_path = args.input_path
     if args.output is None:
         output_path = './output.csv'
     else:
         output_path = args.output
-    res = mp_parse(input_path)
-    print(sys.getsizeof(vulners_fast_table))
     try:
         os.remove(output_path)
     except:
         pass
-    with open(output_path, 'a+', newline='') as file:
-        file.write('sep=,\r\n')
-        wr = csv.writer(file, quoting=csv.QUOTE_ALL, dialect='excel')
-        wr.writerows(res)
+    file = open(output_path, 'a+', newline='')
+    mp_parse(input_path, file, args)
+    sys.exit(0)
