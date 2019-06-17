@@ -4,8 +4,7 @@ import xml.etree.ElementTree as ET
 import csv
 import argparse as arp
 import sys
-from xlsxwriter.workbook import Workbook
-
+from excel_saver import save_to_excell
 namespaces = {'PT': 'http://www.ptsecurity.ru/reports'}
 protocols = {'6': 'TCP', '17': 'UDP'}
 port_status = {'0': 'open', '1': 'locked', '2': 'unavailable'}
@@ -40,7 +39,7 @@ def mp_parse(filename, output_file, flags):
     root = tree.getroot()
     host_info = []
     appended_info = ['ip', 'fqdn', 'os', 'soft name', 'soft version', 'soft path', 'port', 'protocol', 'port status',
-                     'Patrol vulner id', 'Vulner name', 'CVSS', 'CVE',
+                     'Patrol vulner id', 'Vulner name', 'CVSS', 'CVE', 'Vulnerability rate',
                      'description', 'how to fix', 'links', 'start time', 'stop_time']
     host_info.append(appended_info)
     vuln_table_creator(root)
@@ -103,9 +102,9 @@ def vuln_finder(appended_info: list, soft: ET.Element, host_info, start_time: st
                 cve: bool):
     counter = 0
     for vulnerabilty in soft.findall('PT:vulners/PT:vulner', namespaces):
-        if len(level) == 1 and (int(vulnerabilty.attrib['level']) < int(level[0])):
-            continue
-        elif vulnerabilty.attrib['level'] not in level:
+        if level is None:
+            pass
+        elif int(vulnerabilty.attrib['level']) not in level:
             continue
         counter += 1
         vulners_part = vulners_fast_table[vulnerabilty.attrib['id']]
@@ -115,9 +114,8 @@ def vuln_finder(appended_info: list, soft: ET.Element, host_info, start_time: st
             risk = risk_level(vulners_part[1], vulnerabilty.attrib['status'])
         except:
             risk = 'Info'
-        vulners_part.insert(3, risk)
         host_info.append(
-            appended_info + [vulnerabilty.attrib['id']] + vulners_part +
+            appended_info + [vulnerabilty.attrib['id']] + vulners_part[:3] + [risk] + vulners_part[3:] +
             [start_time, stop_time])
     return counter
 
@@ -155,34 +153,41 @@ def vuln_table_creator(root: ET, ):
         vulners_fast_table.update({vuln.attrib['id']: vuln_info})
 
 
+
+
+
 if __name__ == '__main__':
     parser = arp.ArgumentParser(prog='MaxPatrolParser   ')
     parser.add_argument('-p', '--input-path', help='Path to xml file')
     parser.add_argument('-o', '--output', help='Path to output file')
     parser.add_argument('-l', '--level', nargs='+',
-                        help='Level of vulnerability. 0 - info\n'
+                        help='Level of vulnerability. Like -l 1 2 4\n'
+                             ' 0 - info\n'
                              ' 1 - low\n'
                              ' 2 - medium (suspicious)\n'
                              ' 3 - medium\n'
                              ' 4 - high (suspicious)\n'
                              ' 5 - high\n')
-    parser.add_argument('--cve', action='store_true')
+    parser.add_argument('-e', '--excel', action='store_true', help='Output into xlsx file')
+    parser.add_argument('--cve', action='store_true', help='Saves rows in which cve is presented')
     args = parser.parse_args()
     if args.input_path is None:
         parser.print_help()
         print("[-] -p target parameter required")
         exit(1)
-    if args.level is None:
-        args.level = [0]
     input_path = args.input_path
     if args.output is None:
-        output_path = './output.csv'
+        output_path = 'output.csv'
     else:
         output_path = args.output
     try:
         os.remove(output_path)
-    except:
+    except FileNotFoundError:
         pass
-    file = open(output_path, 'a+', newline='')
-    mp_parse(input_path, file, args)
+    output_csv_file = open(output_path, 'a+', newline='')
+    mp_parse(input_path, output_csv_file, args)
+    output_csv_file.seek(0)
+    if args.excel:
+        save_to_excell(output_path)
+
     sys.exit(0)
