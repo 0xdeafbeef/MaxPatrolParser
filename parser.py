@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 import csv
 import argparse as arp
 import sys
-import objgraph
+from xlsxwriter.workbook import Workbook
 
 namespaces = {'PT': 'http://www.ptsecurity.ru/reports'}
 protocols = {'6': 'TCP', '17': 'UDP'}
@@ -44,7 +44,6 @@ def mp_parse(filename, output_file, flags):
                      'description', 'how to fix', 'links', 'start time', 'stop_time']
     host_info.append(appended_info)
     vuln_table_creator(root)
-    objgraph.show_most_common_types()
     cwr = csv.writer(output_file, quoting=csv.QUOTE_ALL, dialect='excel')
     for host in root.findall('./PT:data/PT:host', namespaces):
         ip = host.attrib['ip']
@@ -100,11 +99,13 @@ def get_os_info(host):
     return os_name
 
 
-def vuln_finder(appended_info: list, soft: ET.Element, host_info, start_time: str, stop_time: str, level: int,
+def vuln_finder(appended_info: list, soft: ET.Element, host_info, start_time: str, stop_time: str, level: list,
                 cve: bool):
     counter = 0
     for vulnerabilty in soft.findall('PT:vulners/PT:vulner', namespaces):
-        if int(vulnerabilty.attrib['level']) < int(level):
+        if len(level) == 1 and (int(vulnerabilty.attrib['level']) < int(level[0])):
+            continue
+        elif vulnerabilty.attrib['level'] not in level:
             continue
         counter += 1
         vulners_part = vulners_fast_table[vulnerabilty.attrib['id']]
@@ -124,7 +125,7 @@ def vuln_finder(appended_info: list, soft: ET.Element, host_info, start_time: st
 vulners_fast_table = dict()
 
 
-def vuln_table_creator(root: ET,):
+def vuln_table_creator(root: ET, ):
     for vuln in root.findall('./PT:vulners/PT:vulner', namespaces):
         vuln_info = list()
         try:
@@ -155,10 +156,10 @@ def vuln_table_creator(root: ET,):
 
 
 if __name__ == '__main__':
-    parser = arp.ArgumentParser(prog='MaxPatrolToCsv')
+    parser = arp.ArgumentParser(prog='MaxPatrolParser   ')
     parser.add_argument('-p', '--input-path', help='Path to xml file')
     parser.add_argument('-o', '--output', help='Path to output file')
-    parser.add_argument('-l', '--level', nargs='?', const=0,
+    parser.add_argument('-l', '--level', nargs='+',
                         help='Level of vulnerability. 0 - info\n'
                              ' 1 - low\n'
                              ' 2 - medium (suspicious)\n'
@@ -172,7 +173,7 @@ if __name__ == '__main__':
         print("[-] -p target parameter required")
         exit(1)
     if args.level is None:
-        args.level = 0
+        args.level = [0]
     input_path = args.input_path
     if args.output is None:
         output_path = './output.csv'
