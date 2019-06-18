@@ -5,6 +5,7 @@ import csv
 import argparse as arp
 import sys
 from excel_saver import save_to_excell
+
 namespaces = {'PT': 'http://www.ptsecurity.ru/reports'}
 protocols = {'6': 'TCP', '17': 'UDP'}
 port_status = {'0': 'open', '1': 'locked', '2': 'unavailable'}
@@ -39,8 +40,9 @@ def mp_parse(filename, output_file, flags):
     root = tree.getroot()
     host_info = []
     appended_info = ['ip', 'fqdn', 'os', 'soft name', 'soft version', 'soft path', 'port', 'protocol', 'port status',
-                     'Patrol vulner id', 'Vulner name', 'CVSS', 'CVE', 'Vulnerability rate',
-                     'description', 'how to fix', 'links', 'start time', 'stop_time']
+                     'Patrol vulner id', 'Vulner name', 'CVSS', 'CVE', 'Vulnerability rate', 'Patrol vulnerability rate'
+                                                                                             'description',
+                     'how to fix', 'links', 'start time', 'stop_time']
     host_info.append(appended_info)
     vuln_table_creator(root)
     cwr = csv.writer(output_file, quoting=csv.QUOTE_ALL, dialect='excel')
@@ -98,6 +100,16 @@ def get_os_info(host):
     return os_name
 
 
+def patrol_level(lvl: str):
+    return \
+        {'0': 'доступна информация',
+         '1': 'низкий уровень',
+         '2': 'средний уровень (подозрение)',
+         '3': 'средний уровень',
+         '4': 'высокий уровень (подозрение)',
+         '5': 'высокий уровень'}[lvl]
+
+
 def vuln_finder(appended_info: list, soft: ET.Element, host_info, start_time: str, stop_time: str, level: list,
                 cve: bool):
     counter = 0
@@ -111,11 +123,13 @@ def vuln_finder(appended_info: list, soft: ET.Element, host_info, start_time: st
         if cve and vulners_part[2] is None:
             continue
         try:
-            risk = risk_level(vulners_part[1], vulnerabilty.attrib['status'])
+            risk = [risk_level(vulners_part[1], vulnerabilty.attrib['status'])]
         except:
-            risk = 'Info'
+            risk = ['Info']
+        patrol_risk = [patrol_level(vulnerabilty.attrib['level'])]
+        risk.append(patrol_risk)
         host_info.append(
-            appended_info + [vulnerabilty.attrib['id']] + vulners_part[:3] + [risk] + vulners_part[3:] +
+            appended_info + [vulnerabilty.attrib['id']] + vulners_part[:3] + risk + vulners_part[3:] +
             [start_time, stop_time])
     return counter
 
@@ -153,9 +167,6 @@ def vuln_table_creator(root: ET, ):
         vulners_fast_table.update({vuln.attrib['id']: vuln_info})
 
 
-
-
-
 if __name__ == '__main__':
     parser = arp.ArgumentParser(prog='MaxPatrolParser   ')
     parser.add_argument('-p', '--input-path', help='Path to xml file')
@@ -176,6 +187,8 @@ if __name__ == '__main__':
         print("[-] -p target parameter required")
         exit(1)
     input_path = args.input_path
+    if args.level is not None:
+        args.level = list(map(lambda x: int(x), args.level))
     if args.output is None:
         output_path = 'output.csv'
     else:
