@@ -36,7 +36,7 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
-
+output/
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
@@ -128,3 +128,4 @@ dmypy.json
 #output / input files
 *.csv
 *.xml
+*.rar
