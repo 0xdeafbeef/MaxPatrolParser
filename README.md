@@ -1,4 +1,5 @@
-`usage: MaxPatrolParser    [-h] [-p INPUT_PATH] [-o OUTPUT]
+```
+usage: MaxPatrolParser    [-h] [-p INPUT_PATH] [-o OUTPUT]
                           [-l LEVEL [LEVEL ...]] [-e] [--cve]
 
 optional arguments:
@@ -12,6 +13,7 @@ optional arguments:
                         2 - medium (suspicious) 3 - medium 4 - high
                         (suspicious) 5 - high
   -e, --excel           Output into xlsx file
-  --cve                 Saves rows in which cve is presented`
+  --cve                 Saves rows in which cve is presented
+  ```
   
  Works fine with reports that have 1500 hosts, consumpting 1gb of RAM 
