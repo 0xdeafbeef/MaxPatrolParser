@@ -40,9 +40,9 @@ def mp_parse(filename, output_file, flags):
     root = tree.getroot()
     host_info = []
     appended_info = ['ip', 'fqdn', 'os', 'soft name', 'soft version', 'soft path', 'port', 'protocol', 'port status',
-                     'Patrol vulner id', 'Vulner name', 'CVSS', 'CVE', 'Vulnerability rate', 'Patrol vulnerability rate'
-                                                                                             'description',
-                     'how to fix', 'links', 'start time', 'stop_time']
+                     'Patrol vulner id', 'Vulner name', 'CVSS', 'CVE', 'Vulnerability rate',
+                     'Patrol vulnerability rate',
+                     'description', 'how to fix', 'links', 'start time', 'stop_time']
     host_info.append(appended_info)
     vuln_table_creator(root)
     cwr = csv.writer(output_file, quoting=csv.QUOTE_ALL, dialect='excel')
@@ -126,7 +126,7 @@ def vuln_finder(appended_info: list, soft: ET.Element, host_info, start_time: st
             risk = [risk_level(vulners_part[1], vulnerabilty.attrib['status'])]
         except:
             risk = ['Info']
-        patrol_risk = [patrol_level(vulnerabilty.attrib['level'])]
+        patrol_risk = patrol_level(vulnerabilty.attrib['level'])
         risk.append(patrol_risk)
         host_info.append(
             appended_info + [vulnerabilty.attrib['id']] + vulners_part[:3] + risk + vulners_part[3:] +

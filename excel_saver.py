@@ -1,5 +1,6 @@
 from xlsxwriter.workbook import Workbook
 import csv
+import os
 
 
 def save_to_excell(csvfile):
@@ -11,3 +12,4 @@ def save_to_excell(csvfile):
             for c, col in enumerate(row):
                 worksheet.write(r, c, col)
     workbook.close()
+    os.remove(csvfile)
