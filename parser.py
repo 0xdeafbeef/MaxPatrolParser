@@ -5,7 +5,7 @@ import csv
 import argparse as arp
 import sys
 from excel_saver import save_to_excell
-
+import html
 namespaces = {'PT': 'http://www.ptsecurity.ru/reports'}
 protocols = {'6': 'TCP', '17': 'UDP'}
 port_status = {'0': 'open', '1': 'locked', '2': 'unavailable'}
@@ -141,7 +141,7 @@ def vuln_table_creator(root: ET, ):
     for vuln in root.findall('./PT:vulners/PT:vulner', namespaces):
         vuln_info = list()
         try:
-            vuln_info.append(vuln.find('PT:title', namespaces).text)
+            vuln_info.append(html.unescape(vuln.find('PT:title', namespaces).text))
         except:
             vuln_info.append(None)
         try:
@@ -153,15 +153,15 @@ def vuln_table_creator(root: ET, ):
         except:
             vuln_info.append(None)
         try:
-            vuln_info.append(vuln.find('PT:description', namespaces).text)
+            vuln_info.append(html.unescape(vuln.find('PT:description', namespaces).text))
         except:
             vuln_info.append(None)
         try:
-            vuln_info.append(vuln.find('PT:how_to_fix', namespaces).text)
+            vuln_info.append(html.unescape(vuln.find('PT:how_to_fix', namespaces).text))
         except:
             vuln_info.append(None)
         try:
-            vuln_info.append(vuln.find('PT:links', namespaces).text)
+            vuln_info.append(html.unescape(vuln.find('PT:links', namespaces).text))
         except:
             vuln_info.append(None)
         vulners_fast_table.update({vuln.attrib['id']: vuln_info})
@@ -202,5 +202,4 @@ if __name__ == '__main__':
     output_csv_file.seek(0)
     if args.excel:
         save_to_excell(output_path)
-
     sys.exit(0)
