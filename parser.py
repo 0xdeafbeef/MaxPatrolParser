@@ -202,4 +202,3 @@ if __name__ == '__main__':
     output_csv_file.seek(0)
     if args.excel:
         save_to_excell(output_path)
-    sys.exit(0)
