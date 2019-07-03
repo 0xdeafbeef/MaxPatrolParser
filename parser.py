@@ -211,4 +211,4 @@ if __name__ == '__main__':
     print("Xml parsing finished. Got %d rows." % (len(parse_data)))
     if args.excel:
         print('Writing to xlsx..')
-        save_to_excel(output_path, parse_data[:1000])
+        save_to_excel(output_path, parse_data)
