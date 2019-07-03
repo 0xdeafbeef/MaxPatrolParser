@@ -1,15 +1,25 @@
-from xlsxwriter.workbook import Workbook
-import csv
-import os
+from pyexcelerate import Workbook
+from console_progressbar import ProgressBar
+import threading
+import time
 
 
-def save_to_excell(csvfile):
-    workbook = Workbook(csvfile[:-4] + '.xlsx', options={'strings_to_urls': False, 'constant_memory': True})
-    worksheet = workbook.add_worksheet()
-    with open(csvfile, 'rt', encoding='cp1251') as f:
-        reader = csv.reader(f)
-        for r, row in enumerate(reader):
-            for c, col in enumerate(row):
-                worksheet.write(r, c, col)
-    workbook.close()
-    os.remove(csvfile)
+def print_time(size):
+    count = 0
+    pb = ProgressBar(total=size, prefix='0%', suffix='100%', decimals=1, length=50, fill='X', zfill='-')
+    excpected_time = size / 9548
+    tick = excpected_time / 200
+    rows_per_tick = tick * 9548
+    while count < size:
+        pb.print_progress_bar(count)
+        count += rows_per_tick
+        time.sleep(tick)
+    pb.print_progress_bar(size)
+    print('Zipping..', flush=True)
+
+def save_to_excel(filename, rows):
+    wb = Workbook()
+    x = threading.Thread(target=print_time, args=(len(rows),))
+    wb.new_sheet(sheet_name='Untitled', data=rows)
+    x.start()
+    wb.save(filename[:-4] + '.xlsx')

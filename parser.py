@@ -3,9 +3,9 @@ import os
 import xml.etree.ElementTree as ET
 import csv
 import argparse as arp
-import sys
-from excel_saver import save_to_excell
+from excel_saver import save_to_excel
 import html
+
 namespaces = {'PT': 'http://www.ptsecurity.ru/reports'}
 protocols = {'6': 'TCP', '17': 'UDP'}
 port_status = {'0': 'open', '1': 'locked', '2': 'unavailable'}
@@ -33,22 +33,26 @@ def risk_level(cvss, reliability):
             return 'Low (Suspicious)'
 
 
-def mp_parse(filename, output_file, flags):
+def mp_parse(input_filename, output_file, flags):
+    excel_saving = flags.excel
     level = flags.level
+    rows_num = 0
     cve_is_needed = flags.cve
-    tree = ET.parse(filename)
+    tree = ET.parse(input_filename)
     root = tree.getroot()
     host_info = []
     appended_info = ['ip', 'fqdn', 'os', 'soft name', 'soft version', 'soft path', 'port', 'protocol', 'port status',
                      'Patrol vulner id', 'Vulner name', 'CVSS', 'CVE', 'Vulnerability rate',
                      'Patrol vulnerability rate',
-                     'description', 'how to fix', 'links', 'start time', 'stop_time']
+                     'description', 'how to fix', 'links', 'Scanner name', 'start time', 'stop_time']
     host_info.append(appended_info)
     vuln_table_creator(root)
-    cwr = csv.writer(output_file, quoting=csv.QUOTE_ALL, dialect='excel')
+    if excel_saving is False:
+        cwr = csv.writer(output_file, quoting=csv.QUOTE_ALL, dialect='excel')
     for host in root.findall('./PT:data/PT:host', namespaces):
         ip = host.attrib['ip']
         fqdn = host.attrib['fqdn']
+        scanner_name = host.find('PT:scanner', namespaces).text
         start_time = host.attrib['start_time']
         stop_time = host.attrib['stop_time']
         os = get_os_info(host)
@@ -79,12 +83,17 @@ def mp_parse(filename, output_file, flags):
             except:
                 appended_info.append(None)
             # finds cve and cvss if exists, else sets None
-            if vuln_finder(appended_info, soft, host_info, start_time, stop_time,
-                           level, cve_is_needed) == 0 and level == 0:
-                appended_info += ([None] * 7 + [start_time, stop_time])
+            if vuln_finder(appended_info, soft, host_info, start_time, stop_time, scanner_name,
+                           level, cve_is_needed) == 0 and not level:
+                appended_info += ([None] * 9 + [scanner_name, start_time, stop_time])
                 host_info.append(appended_info)
-        cwr.writerows(host_info)
-        host_info = []
+        if excel_saving is False:
+            cwr.writerows(host_info)
+            rows_num += len(host_info)
+            host_info = []
+    if excel_saving is False:
+        output_file.close()
+    return host_info
 
 
 def get_os_info(host):
@@ -110,8 +119,8 @@ def patrol_level(lvl: str):
          '5': 'высокий уровень'}[lvl]
 
 
-def vuln_finder(appended_info: list, soft: ET.Element, host_info, start_time: str, stop_time: str, level: list,
-                cve: bool):
+def vuln_finder(appended_info: list, soft: ET.Element, host_info, start_time: str, stop_time: str, scanner_name: str,
+                level: list, cve: bool):
     counter = 0
     for vulnerabilty in soft.findall('PT:vulners/PT:vulner', namespaces):
         if level is None:
@@ -130,7 +139,7 @@ def vuln_finder(appended_info: list, soft: ET.Element, host_info, start_time: st
         risk.append(patrol_risk)
         host_info.append(
             appended_info + [vulnerabilty.attrib['id']] + vulners_part[:3] + risk + vulners_part[3:] +
-            [start_time, stop_time])
+            [scanner_name, start_time, stop_time])
     return counter
 
 
@@ -198,7 +207,8 @@ if __name__ == '__main__':
     except FileNotFoundError:
         pass
     output_csv_file = open(output_path, 'a+', newline='')
-    mp_parse(input_path, output_csv_file, args)
-    output_csv_file.seek(0)
+    parse_data = mp_parse(input_path, output_csv_file, args)
+    print("Xml parsing finished. Got %d rows." % (len(parse_data)))
     if args.excel:
-        save_to_excell(output_path)
+        print('Writing to xlsx..')
+        save_to_excel(output_path, parse_data[:1000])
