@@ -195,18 +195,17 @@ if __name__ == '__main__':
         parser.print_help()
         print("[-] -p target parameter required")
         exit(1)
-    input_path = args.input_path
+    input_path = str(args.input_path)
     if args.level is not None:
         args.level = list(map(lambda x: int(x), args.level))
     if args.output is None:
-        output_path = 'output.csv'
+        output_path = input_path.split('.')[0]
     else:
         output_path = args.output
-    try:
-        os.remove(output_path)
-    except FileNotFoundError:
-        pass
-    output_csv_file = open(output_path, 'a+', newline='')
+    if not args.excel:
+        output_csv_file = open(output_path + '.csv', 'a+', newline='')
+    else:
+        output_csv_file = None
     parse_data = mp_parse(input_path, output_csv_file, args)
     print("Xml parsing finished. Got %d rows." % (len(parse_data)))
     if args.excel:
