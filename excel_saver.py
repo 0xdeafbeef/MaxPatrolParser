@@ -24,3 +24,4 @@ def save_to_excel(filename, rows):
     wb.new_sheet(sheet_name='Untitled', data=rows)
     x.start()
     wb.save(filename + '.xlsx')
+    print('Your data is saved in ' + filename + '.xlsx')
