@@ -84,7 +84,7 @@ def mp_parse(input_filename, output_file, flags):
                 appended_info.append(None)
             # finds cve and cvss if exists, else sets None
             if vuln_finder(appended_info, soft, host_info, start_time, stop_time, scanner_name,
-                           level, cve_is_needed) == 0 and not level:
+                           level, cve_is_needed) == 0 and not level and not cve_is_needed:
                 appended_info += ([None] * 9 + [scanner_name, start_time, stop_time])
                 host_info.append(appended_info)
         if excel_saving is False:
@@ -137,9 +137,11 @@ def vuln_finder(appended_info: list, soft: ET.Element, host_info, start_time: st
             risk = ['Info']
         patrol_risk = patrol_level(vulnerabilty.attrib['level'])
         risk.append(patrol_risk)
-        host_info.append(
-            appended_info + [vulnerabilty.attrib['id']] + vulners_part[:3] + risk + vulners_part[3:] +
-            [scanner_name, start_time, stop_time])
+        for l in vulners_part[2]:
+            host_info.append(
+                appended_info + [vulnerabilty.attrib['id']] + vulners_part[:2] + [l] +
+                risk + vulners_part[3:] +
+                [scanner_name, start_time, stop_time])
     return counter
 
 
@@ -158,7 +160,11 @@ def vuln_table_creator(root: ET, ):
         except:
             vuln_info.append(None)
         try:
-            vuln_info.append(vuln.find('PT:global_id', namespaces).attrib['value'])
+            vuln_info.append(
+                [a for a in [v.attrib['value'] for v in vuln.findall("PT:global_id", namespaces)] if "CVE" in a])
+            # if len(vuln.findall("PT:global_id", namespaces)) > 1:
+            #     for v in vuln.findall("PT:global_id", namespaces):
+            #         print(v.attrib['value'])
         except:
             vuln_info.append(None)
         try:
