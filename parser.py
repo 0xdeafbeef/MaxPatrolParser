@@ -213,7 +213,9 @@ if __name__ == '__main__':
     else:
         output_csv_file = None
     parse_data = mp_parse(input_path, output_csv_file, args)
-    print("Xml parsing finished. Got %d rows." % (len(parse_data)))
     if args.excel:
+        print("Xml parsing finished. Got %d rows." % (len(parse_data)))
         print('Writing to xlsx..')
         save_to_excel(output_path, parse_data)
+    else:
+        print('Parsing finished. Your data is saved in ' + output_path + '.csv')

@@ -1,1 +1,2 @@
-XlsxWriter==1.1.8
+PyExcelerate==0.8.0
+console_progressbar==1.1.1
